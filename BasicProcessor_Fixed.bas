@@ -1,12 +1,12 @@
 ' ===============================================
-' プロシージャ名：BasicProcessor（基本処理修正版）- テーブル解除エラー修正
+' プロシージャ名：BasicProcessor（基本処理修正版）- 文字列削除修正
 ' 作成者：関西のおばちゃん
 ' 作成日：2025/06/16
-' 修正日：2025/06/18 - テーブル形式解除処理のオブジェクトエラー修正
+' 修正日：2025/06/18 - 文字列削除処理の括弧修正＋(非在庫品)追加
 ' 概要：PDF取得後の基本データ整理処理（正しい順番で）
 '       【最初の4項目】
 '       1. Table001のB列削除
-'       2. (内作)(別注)(全ネジ) → 文字列削除
+'       2. (内作)(別注)(全ﾈｼﾞ)(非在庫品) → 文字列削除（★括弧修正済み★）
 '       3. x → X変換（小文字→大文字）
 '       4. カタカナ全角 → 半角変換
 '       【その後の処理】
@@ -34,7 +34,7 @@ Sub 基本処理_修正版()
     response = MsgBox("基本処理（修正版）を実行するで?" & vbCrLf & vbCrLf & _
                       "【最初の4項目】" & vbCrLf & _
                       "1. Table001のB列削除" & vbCrLf & _
-                      "2. (内作)(別注)(全ネジ) 文字列削除" & vbCrLf & _
+                      "2. (内作)(別注)(全ﾈｼﾞ)(非在庫品) 文字列削除" & vbCrLf & _
                       "3. x → X変換" & vbCrLf & _
                       "4. カタカナ全角→半角変換" & vbCrLf & vbCrLf & _
                       "【その後の処理】" & vbCrLf & _
@@ -58,7 +58,7 @@ Sub 基本処理_修正版()
     
     ' 【最初の4項目】順番大事やで♪
     Call Step1_B列削除処理
-    Call Step2_文字列削除処理
+    Call Step2_文字列削除処理  ' ★修正済み★
     Call Step3_x大文字変換処理
     Call Step4_カタカナ半角変換処理
     
@@ -109,12 +109,13 @@ Sub Step1_B列削除処理()
 End Sub
 
 ' ===============================================
-' ステップ2：文字列削除処理
+' ステップ2：文字列削除処理（★修正版★）
 ' ===============================================
 
 Sub Step2_文字列削除処理()
     ' -----------------------------------------------
-    ' (内作)(別注)(全ネジ)の文字列を削除
+    ' ★修正：括弧を半角()に変更、(非在庫品)を追加
+    ' (内作)(別注)(全ﾈｼﾞ)(非在庫品)の文字列を削除
     ' 行は削除せず、文字列だけ ""に置換するで♪
     ' -----------------------------------------------
     
@@ -122,9 +123,10 @@ Sub Step2_文字列削除処理()
     Dim lastRow As Long
     Dim i As Long, col As Integer
     Dim cellValue As String
+    Dim originalValue As String  ' ★追加：変更前の値を保存
     Dim replaceCount As Integer
     
-    Debug.Print "=== ステップ2: 文字列削除開始 ==="
+    Debug.Print "=== ステップ2: 文字列削除開始（修正版） ==="
     
     ' Table001の処理
     On Error Resume Next
@@ -140,28 +142,40 @@ Sub Step2_文字列削除処理()
             ' 各セルをチェックして文字列削除
             For i = 1 To lastRow
                 For col = 1 To 5  ' A~E列（B列削除後なのでA,C,D,E,Fになってる）
-                    cellValue = CStr(.Cells(i, col).Value)
+                    originalValue = CStr(.Cells(i, col).Value)  ' ★追加：元の値を保存
+                    cellValue = originalValue
                     
+                    ' ★修正：半角括弧()に変更
                     ' (内作)を削除
                     If InStr(cellValue, "(内作)") > 0 Then
                         cellValue = Replace(cellValue, "(内作)", "")
-                        .Cells(i, col).Value = cellValue
                         replaceCount = replaceCount + 1
+                        Debug.Print "削除: " & originalValue & " → " & cellValue  ' ★追加：削除ログ
                     End If
                     
                     ' (別注)を削除
                     If InStr(cellValue, "(別注)") > 0 Then
                         cellValue = Replace(cellValue, "(別注)", "")
-                        .Cells(i, col).Value = cellValue
                         replaceCount = replaceCount + 1
+                        Debug.Print "削除: " & originalValue & " → " & cellValue  ' ★追加：削除ログ
                     End If
                     
-                    ' (全ネジ)を削除
-                    If InStr(cellValue, "(全ネジ)") > 0 Then
-                        cellValue = Replace(cellValue, "(全ネジ)", "")
-                        .Cells(i, col).Value = cellValue
+                    ' (全ﾈｼﾞ)を削除（半角カタカナ）
+                    If InStr(cellValue, "(全ﾈｼﾞ)") > 0 Then
+                        cellValue = Replace(cellValue, "(全ﾈｼﾞ)", "")
                         replaceCount = replaceCount + 1
+                        Debug.Print "削除: " & originalValue & " → " & cellValue  ' ★追加：削除ログ
                     End If
+                    
+                    ' ★新規追加：(非在庫品)を削除
+                    If InStr(cellValue, "(非在庫品)") > 0 Then
+                        cellValue = Replace(cellValue, "(非在庫品)", "")
+                        replaceCount = replaceCount + 1
+                        Debug.Print "削除: " & originalValue & " → " & cellValue  ' ★追加：削除ログ
+                    End If
+                    
+                    ' セルの値を更新
+                    .Cells(i, col).Value = cellValue
                 Next col
             Next i
         End With
@@ -183,28 +197,40 @@ Sub Step2_文字列削除処理()
             ' 各セルをチェックして文字列削除
             For i = 1 To lastRow
                 For col = 1 To 5  ' A~E列
-                    cellValue = CStr(.Cells(i, col).Value)
+                    originalValue = CStr(.Cells(i, col).Value)  ' ★追加：元の値を保存
+                    cellValue = originalValue
                     
+                    ' ★修正：半角括弧()に変更
                     ' (内作)を削除
                     If InStr(cellValue, "(内作)") > 0 Then
                         cellValue = Replace(cellValue, "(内作)", "")
-                        .Cells(i, col).Value = cellValue
                         replaceCount = replaceCount + 1
+                        Debug.Print "削除: " & originalValue & " → " & cellValue  ' ★追加：削除ログ
                     End If
                     
                     ' (別注)を削除
                     If InStr(cellValue, "(別注)") > 0 Then
                         cellValue = Replace(cellValue, "(別注)", "")
-                        .Cells(i, col).Value = cellValue
                         replaceCount = replaceCount + 1
+                        Debug.Print "削除: " & originalValue & " → " & cellValue  ' ★追加：削除ログ
                     End If
                     
-                    ' (全ネジ)を削除
-                    If InStr(cellValue, "(全ネジ)") > 0 Then
-                        cellValue = Replace(cellValue, "(全ネジ)", "")
-                        .Cells(i, col).Value = cellValue
+                    ' (全ﾈｼﾞ)を削除（半角カタカナ）
+                    If InStr(cellValue, "(全ﾈｼﾞ)") > 0 Then
+                        cellValue = Replace(cellValue, "(全ﾈｼﾞ)", "")
                         replaceCount = replaceCount + 1
+                        Debug.Print "削除: " & originalValue & " → " & cellValue  ' ★追加：削除ログ
                     End If
+                    
+                    ' ★新規追加：(非在庫品)を削除
+                    If InStr(cellValue, "(非在庫品)") > 0 Then
+                        cellValue = Replace(cellValue, "(非在庫品)", "")
+                        replaceCount = replaceCount + 1
+                        Debug.Print "削除: " & originalValue & " → " & cellValue  ' ★追加：削除ログ
+                    End If
+                    
+                    ' セルの値を更新
+                    .Cells(i, col).Value = cellValue
                 Next col
             Next i
         End With
@@ -212,7 +238,7 @@ Sub Step2_文字列削除処理()
         Debug.Print "Table002: " & replaceCount & "個の文字列を削除"
     End If
     
-    Debug.Print "=== ステップ2完了 ==="
+    Debug.Print "=== ステップ2完了（修正版） ==="
     
 End Sub
 
@@ -649,7 +675,7 @@ Sub 結果確認_修正版()
         msg = msg & "♪ データ行数：" & (lastRow - 1) & " 行（ヘッダー除く）" & vbCrLf
         msg = msg & "♪ 最終行：" & lastRow & " 行目" & vbCrLf
         msg = msg & "♪ B列削除済み" & vbCrLf
-        msg = msg & "♪ 文字列変換済み" & vbCrLf
+        msg = msg & "♪ 文字列変換済み（括弧修正済み）" & vbCrLf
         msg = msg & "♪ テーブル形式解除済み（エラー修正済み）" & vbCrLf & vbCrLf
         msg = msg & "基本処理（修正版）が完了したで♪"
         
